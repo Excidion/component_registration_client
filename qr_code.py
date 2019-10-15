@@ -1,7 +1,6 @@
 import qrcode
 import cv2
 import numpy as np
-from time import sleep
 
 
 def draw_qr_code(code, filepath):
