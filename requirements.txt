@@ -1,0 +1,5 @@
+pymysql
+uuid
+opencv-python
+qrcode
+numpy
