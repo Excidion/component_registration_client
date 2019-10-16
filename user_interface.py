@@ -193,10 +193,10 @@ class DisplayFrame(tk.LabelFrame):
         self.config(text=self.label)
         self.display = tk.Label(self, text="")
         self.display.pack()
-        self.set()
+        self.set("")
 
-    def set(self, entry=None):
-        if not entry == None:
+    def set(self, entry):
+        if not entry == "":
             self.var = entry
             display_text = entry
         else:
