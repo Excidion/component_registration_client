@@ -20,20 +20,21 @@ class ConnectionManager:
             pickle_object({"user": user, "passwd": password}, self.storage)
 
 
-    def execute_jobs(append_query=None):
-        jobs = get_open_jobs()
+    def execute_jobs(self, append_query=None):
+        jobs = self.get_open_jobs()
         if not append_query == None:
             jobs.append(query)
         for i, job in enumerate(jobs):
             try:
-                execute_query(job)
-            except:
+                self.execute_query(job)
+            except Exception as e:
+                print(e)
                 continue
             else:
                 del jobs[i]
         pickle_object(jobs, self.open_jobs)
 
-    def get_open_jobs():
+    def get_open_jobs(self):
         try:
             return unpickle_object(self.open_jobs)
         except FileNotFoundError:
@@ -59,12 +60,14 @@ class ConnectionManager:
     def check_online_status(self):
         try:
             pymysql.connect(**self.config).close()
-        except Exception as e:
+        except UnicodeError:
+            print("Error in MySQL configuration.")
+        except pymysql.err.OperationalError as e:
             print(e)
-            return False
         else:
             self.execute_jobs()
             return True
+        return False
 
 
     def wait_for_changes(self):
