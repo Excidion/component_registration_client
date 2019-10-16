@@ -8,7 +8,6 @@ def draw_qr_code(code, filepath):
     img.save(filepath)
 
 
-
 def qr_cam(quit_on_find=True):
     webcam = cv2.VideoCapture(0)
     detector = cv2.QRCodeDetector()

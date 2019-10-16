@@ -10,7 +10,7 @@ def generate_part_id():
 
 
 def generate_event_id(part_id):
-    timestamp = str(datetime.now())
+    timestamp = str(datetime.utcnow())
     mac_adress = get_mac_adress()
     salt = f"{mac_adress}@{timestamp}"
     return hash_string(part_id, salt=salt)
