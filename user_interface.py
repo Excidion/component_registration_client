@@ -129,17 +129,21 @@ class UserInterface():
 
 
     def enter_credentials(self):
-        LoginFrame(self.connection_manager, self.update_online_status)
+        LoginWindow(self.connection_manager, self.update_online_status)
 
 
     def scan_part(self):
         id = qr_cam()
-        self.display_id.set(id)
-        self.display_new_state.set("")
-        self.display_new_comment.set("-")
-        self.display_new_time.set(str(datetime.now()).split(".")[0])
-        self.display_assembly_group.freeze()
-        self.display_module.freeze()
+        if self.connection_manager.check_part_existence(id, allow_offline=True):
+            self.display_id.set(id)
+            self.display_new_state.set("")
+            self.display_new_comment.set("-")
+            self.display_new_time.set(str(datetime.now()).split(".")[0])
+            self.display_assembly_group.freeze()
+            self.display_module.freeze()
+        else:
+            tm.showerror("Database Lookup", f"Part ({id}) could not be found.")
+
 
     def new_part(self):
         id = generate_part_id()
@@ -266,9 +270,10 @@ class SelectionFrame(tk.LabelFrame):
 
 
 
-class LoginFrame(tk.Toplevel):
+class LoginWindow(tk.Toplevel):
     def __init__(self, connection_manager, update_ui):
         super().__init__()
+        self.bind("<Escape>", lambda x: self.destroy())
         self.connection_manager = connection_manager
         self.update_ui = update_ui
 

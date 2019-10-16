@@ -11,6 +11,7 @@ class ConnectionManager:
         if os.path.exists(self.storage):
             stored = unpickle_object(self.storage)
             self.set_credentials(stored["user"], stored["passwd"])
+        self.open_jobs = "jobs.p"
 
     def set_credentials(self, user, password, store=False):
         self.config["user"] = user
@@ -18,6 +19,25 @@ class ConnectionManager:
         if store:
             pickle_object({"user": user, "passwd": password}, self.storage)
 
+
+    def execute_jobs(append_query=None):
+        jobs = get_open_jobs()
+        if not append_query == None:
+            jobs.append(query)
+        for i, job in enumerate(jobs):
+            try:
+                execute_query(job)
+            except:
+                continue
+            else:
+                del jobs[i]
+        pickle_object(jobs, self.open_jobs)
+
+    def get_open_jobs():
+        try:
+            return unpickle_object(self.open_jobs)
+        except FileNotFoundError:
+            return []
 
     def execute_query(self, query):
         db = pymysql.connect(**self.config)
@@ -28,6 +48,14 @@ class ConnectionManager:
         return result
 
 
+    def check_part_existence(self, id, allow_offline=False):
+        if not self.check_online_status():
+            return allow_offline # allow offline editing
+
+        query = f"SQL asking for amount of entries for {id}"
+        entries = self.execute_query(query)
+        return len(entries) > 0
+
     def check_online_status(self):
         try:
             pymysql.connect(**self.config).close()
@@ -35,21 +63,16 @@ class ConnectionManager:
             print(e)
             return False
         else:
+            self.execute_jobs()
             return True
 
 
     def wait_for_changes(self):
-        query = "magic query" # TODO query to return if anything changed
+        query = "magic query to ask for last update" # TODO
         db = pymysql.connect(**self.config)
         cur = db.cursor()
-        while not sleep(1):
-            try:
-                cur.execute(query)
-                new_entries = cur.fetchall()
-            except Exception as e:
-                print(e)
-                sleep(1)
-            else:
-                if new_entries:
-                    db.close()
-                    return
+        while not sleep(5):
+            cur.execute(query)
+            last_entry = cur.fetchall()
+            if last_entry == my_last_entry:
+                return
