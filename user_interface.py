@@ -14,13 +14,14 @@ class UserInterface():
         self.root = tk.Tk()
         self.root.title("Component Registration")
         self.root.bind("<Escape>", lambda x: self.root.destroy())
+        self.root.resizable(width=False, height=False)
         self.connection_manager = connection_manager
+        self.main_frame = tk.Frame(self.root)
         self.online_status_indicator = tk.Button(
-            self.root,
+            self.main_frame,
             text = "Connecting...",
             command = self.enter_credentials,
         )
-        self.main_frame = tk.Frame(self.root)
 
         self.new_part_button = tk.Button(
             self.main_frame,
@@ -35,6 +36,13 @@ class UserInterface():
             width = 25,
             height = 3,
             command = self.scan_part,
+        )
+        self.submit_work_button = tk.Button(
+            self.main_frame,
+            text = "Submit Entries",
+            width = 25,
+            height = 3,
+            command = lambda: print("PUSH!"),
         )
 
         self.working_frame = tk.LabelFrame(
@@ -100,11 +108,11 @@ class UserInterface():
 
 
         self.main_frame.pack()
-        self.online_status_indicator.pack()
-
-        self.new_part_button.grid(row=0, column=0)
-        self.scan_part_button.grid(row=1, column=0)
-        self.working_frame.grid(row=0, column=1, rowspan=2, sticky="nesw")
+        self.new_part_button.grid(row=0, column=0, sticky="new")
+        self.scan_part_button.grid(row=0, column=0, sticky="esw")
+        self.submit_work_button.grid(row=2, column=0)
+        self.online_status_indicator.grid(row=3, column=0)
+        self.working_frame.grid(row=0, column=1, rowspan=4, sticky="nesw")
 
         self.display_id.grid(row=0, column=0, sticky="nesw")
         self.display_qr.pack()
