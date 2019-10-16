@@ -20,6 +20,26 @@ class ConnectionManager:
             pickle_object({"user": user, "passwd": password}, self.storage)
 
 
+    def check_part_existence(self, id, allow_offline=False):
+        if not self.check_online_status():
+            return allow_offline # allow offline editing
+
+        query = f"SQL asking for amount of entries for {id}"
+        entries = self.execute_query(query)
+        return len(entries) > 0
+
+    def check_online_status(self):
+        try:
+            pymysql.connect(**self.config).close()
+        except UnicodeError:
+            print("Error in MySQL configuration.")
+        except pymysql.err.OperationalError as e:
+            print(e)
+        else:
+            self.execute_jobs()
+            return True
+        return False
+
     def execute_jobs(self, append_query=None):
         jobs = self.get_open_jobs()
         if not append_query == None:
@@ -47,27 +67,6 @@ class ConnectionManager:
         result = cur.fetchall()
         db.close()
         return result
-
-
-    def check_part_existence(self, id, allow_offline=False):
-        if not self.check_online_status():
-            return allow_offline # allow offline editing
-
-        query = f"SQL asking for amount of entries for {id}"
-        entries = self.execute_query(query)
-        return len(entries) > 0
-
-    def check_online_status(self):
-        try:
-            pymysql.connect(**self.config).close()
-        except UnicodeError:
-            print("Error in MySQL configuration.")
-        except pymysql.err.OperationalError as e:
-            print(e)
-        else:
-            self.execute_jobs()
-            return True
-        return False
 
 
     def wait_for_changes(self):
