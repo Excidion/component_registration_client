@@ -18,22 +18,17 @@ def qr_cam(quit_on_find=True):
         # find and mark code
         data, bbox, straight_qrcode = detector.detectAndDecode(img)
         if not data == "":
-            if quit_on_find:
-                cv2.destroyAllWindows()
-                webcam.release()
-                return data
-            else:
-                img = cv2.polylines(img, np.int32([bbox]), True, (0,255,0), 3)
+            img = cv2.polylines(img, np.int32([bbox]), True, (0,255,0), 3)
 
         # mirror and show
         img = cv2.flip(img, 1)
         cv2.imshow("QR Code Detector", img)
 
         # Close and break the loop after pressing escape key
-        if cv2.waitKey(1) &0XFF == 27:
+        if (cv2.waitKey(1) &0XFF == 27) or (data != "" and quit_on_find):
             cv2.destroyAllWindows()
             webcam.release()
-            break
+            return data
 
 if __name__ == '__main__':
     qr_cam(False)
