@@ -1,8 +1,10 @@
 import tkinter as tk
 import tkinter.messagebox as tm
+from tkinter.filedialog import asksaveasfilename as save_as
+from PIL import ImageTk
 from threading import Thread
 from time import sleep
-from qr_code import qr_cam
+from qr_code import qr_cam, create_qr_code, save_qr_code
 from utils import generate_part_id
 from datetime import datetime
 
@@ -39,10 +41,21 @@ class UserInterface():
             self.main_frame,
             text = "Component",
         )
+
         self.display_id = DisplayFrame(
             self.working_frame,
             label = "ID",
         )
+        self.display_qr = ImageButton(
+            self.display_id,
+            image = create_qr_code(self.display_id.get()),
+            resize = (250, 250),
+            command = lambda: save_qr_code(
+                self.display_id.get(),
+                save_as(filetypes=[("PNG files","*.png"),("all files","*.*")]),
+            ),
+        )
+
         self.display_assembly_group = SelectionFrame(
             self.working_frame,
             label = "Assembly Group",
@@ -94,6 +107,7 @@ class UserInterface():
         self.working_frame.grid(row=0, column=1, rowspan=2, sticky="nesw")
 
         self.display_id.grid(row=0, column=0, sticky="nesw")
+        self.display_qr.pack()
         self.display_assembly_group.grid(row=0, column=1, sticky="nesw")
         self.display_module.grid(row=0, column=2, sticky="nesw")
 
@@ -136,6 +150,7 @@ class UserInterface():
         id = qr_cam()
         if self.connection_manager.check_part_existence(id, allow_offline=True):
             self.display_id.set(id)
+            self.display_qr.change_image(create_qr_code(self.display_id.get()))
             self.display_new_state.set("")
             self.display_new_comment.set("-")
             self.display_new_time.set(str(datetime.now()).split(".")[0])
@@ -148,6 +163,7 @@ class UserInterface():
     def new_part(self):
         id = generate_part_id()
         self.display_id.set(id)
+        self.display_qr.change_image(create_qr_code(self.display_id.get()))
         self.display_state_time.set("NA")
         self.display_state.set("NA")
         self.display_state_comment.set("NA")
@@ -157,6 +173,8 @@ class UserInterface():
         self.display_new_comment.set("-")
         self.display_assembly_group.unfreeze()
         self.display_module.unfreeze()
+
+
 
 
 class DisplayFrame(tk.LabelFrame):
@@ -183,6 +201,7 @@ class DisplayFrame(tk.LabelFrame):
 
 
 
+
 class EntryFrame(tk.LabelFrame):
     def __init__(self, *args, label, **kwargs):
         super().__init__(*args, **kwargs)
@@ -198,6 +217,7 @@ class EntryFrame(tk.LabelFrame):
 
     def get(self):
         return self.display.get()
+
 
 
 
@@ -267,6 +287,37 @@ class SelectionFrame(tk.LabelFrame):
 
     def get(self):
         return self.var.get()
+
+
+
+
+class ImageButton(tk.Button):
+    def __init__(self, *args, image, resize=None, **kwargs):
+        image = self.prep_image(image, resize)
+        super(ImageButton, self).__init__(
+            *args,
+            **kwargs,
+            image = image,
+            width = image.width(),
+            height = image.height(),
+            anchor = tk.CENTER,
+        )
+        self.image = image # wtf magic pls don't touch
+
+    def change_image(self, image, resize=None, **kwargs):
+        image = self.prep_image(image, resize)
+        self.config(image=image)
+        self.image = image
+
+    def prep_image(self, image, resize):
+        if not resize == None:
+            image = image.resize(resize)
+        else:
+            try:
+                image = image.resize((self.image.width(), self.image.height()))
+            except: pass
+        return ImageTk.PhotoImage(image)
+
 
 
 

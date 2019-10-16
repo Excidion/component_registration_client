@@ -1,11 +1,17 @@
 import qrcode
 import cv2
 import numpy as np
+import os
 
 
-def draw_qr_code(code, filepath):
-    img = qrcode.make(code)
-    img.save(filepath)
+def save_qr_code(code, filepath):
+    if isinstance(filepath, str) and not filepath == "":
+        img = qrcode.make(code)
+        img.save(filepath)
+
+
+def create_qr_code(code):
+    return qrcode.make(code)
 
 
 def qr_cam(quit_on_find=True):
