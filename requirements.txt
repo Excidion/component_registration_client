@@ -3,3 +3,4 @@ uuid
 opencv-python
 qrcode
 numpy
+pycryptodome

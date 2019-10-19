@@ -1,23 +1,33 @@
 import pymysql
 from time import sleep
 import os
-from utils import pickle_object, unpickle_object
+from utils import pickle_object, unpickle_object, encrypt_string, decrypt_string
 
 
 class ConnectionManager:
     def __init__(self, config):
+        self.open_jobs = ".jobs.p"
         self.config = config
-        self.storage = "login.p"
+        self.storage = ".login.p"
         if os.path.exists(self.storage):
             stored = unpickle_object(self.storage)
-            self.set_credentials(stored["user"], stored["passwd"])
-        self.open_jobs = "jobs.p"
+            self.set_credentials(
+                decrypt_string(stored["user"]),
+                decrypt_string(stored["passwd"]),
+            )
+
 
     def set_credentials(self, user, password, store=False):
         self.config["user"] = user
         self.config["passwd"] = password
         if store:
-            pickle_object({"user": user, "passwd": password}, self.storage)
+            pickle_object(
+                {
+                    "user": encrypt_string(user),
+                    "passwd": encrypt_string(password),
+                },
+            self.storage,
+            )
 
 
     def check_part_existence(self, id, allow_offline=False):
