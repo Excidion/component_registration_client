@@ -7,6 +7,7 @@ from time import sleep
 from qr_code import qr_cam, create_qr_code, save_qr_code
 from utils import generate_part_id
 from datetime import datetime
+import pandas as pd
 
 
 class UserInterface():
@@ -42,7 +43,7 @@ class UserInterface():
             text = "Submit Entries",
             width = 25,
             height = 3,
-            command = lambda: print("PUSH!"),
+            command = self.submit_work,
         )
 
         self.working_frame = tk.LabelFrame(
@@ -160,13 +161,10 @@ class UserInterface():
         id = qr_cam()
         if self.connection_manager.check_part_existence(id, allow_offline=True):
             self.display_id.set(id)
-            self.display_new_state.set("")
-            self.display_new_comment.set("-")
-            self.display_new_time.set(str(datetime.now()).split(".")[0])
-            slef.display_new_state.unfreeze()
+            self.display_new_time.set(datetime.now().strftime("%Y.%m.%d %H:%M"))
+            self.display_new_state.unfreeze()
         else:
             tm.showerror("Database Lookup", f"Part ({id}) could not be found.")
-            self.display_id.set("")
         self.display_qr.change_image(create_qr_code(self.display_id.get()))
 
 
@@ -179,12 +177,42 @@ class UserInterface():
         self.display_state.set("NA")
         self.display_state_comment.set("NA")
 
-        self.display_new_time.set(str(datetime.now()).split(".")[0])
+        self.display_new_time.set(datetime.now().strftime("%Y.%m.%d %H:%M"))
         self.display_new_state.set("manufactured")
         self.display_new_state.freeze()
-        self.display_new_comment.set("-")
         self.display_assembly_group.unfreeze()
         self.display_module.unfreeze()
+
+
+    def submit_work(self):
+        time = self.display_new_time.get()
+        try:
+            time = datetime.strptime(time, "%Y.%m.%d %H:%M")
+        except ValueError:
+            tm.showerror("Wrong date/time format", "Use format yyyy.mm.dd HH:MM")
+            return
+
+        new_entries = {
+            "id": self.display_id.get(),
+            "time": time,
+            "state":  self.display_new_state.get(),
+            "assembly_group": self.display_assembly_group.get(),
+            "module": self.display_module.get(),
+            "comment": self.display_new_comment.get(),
+        }
+        for entry in new_entries:
+            if (new_entries[entry] == "") and not (entry == "comment"):
+                tm.showerror("Missing Entry", entry)
+                break
+        else: # loop did not break due to missing entries
+            data = pd.DataFrame()
+            data = data.append(
+                new_entries,
+                ignore_index = True,
+            )
+            self.connection_manager.append_table("components", data)
+            tm.showinfo("Database Connection", "Data transfer successfull.")
+
 
 
     def reset_ui(self):
@@ -234,7 +262,6 @@ class EntryFrame(tk.LabelFrame):
     def set(self, entry):
         self.display.delete(0, tk.END)
         self.display.insert(0, entry)
-        #self.display.set(entry)
 
     def get(self):
         return self.display.get()

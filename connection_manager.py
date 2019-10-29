@@ -1,7 +1,10 @@
 import pymysql
+from sqlalchemy import create_engine
+import pandas as pd
+from datetime import datetime
 from time import sleep
 import os
-from utils import pickle_object, unpickle_object, encrypt_string, decrypt_string
+from utils import pickle_object, unpickle_object, encrypt_string, decrypt_string, generate_event_id
 
 
 class ConnectionManager:
@@ -30,13 +33,31 @@ class ConnectionManager:
             )
 
 
+    def get_table(self, table_name):
+        user = self.config["user"]
+        pwd = self.config["passwd"]
+        host = self.config["host"]
+        db = self.config["database"]
+        with create_engine(f"mysql+pymysql://{user}:{pwd}@{host}/{db}").connect() as con:
+            return pd.read_sql(table_name, con=con)
+
+    def append_table(self, table_name, data):
+        data["user"] = self.config["user"]
+        data["event_id"] = data["id"].apply(generate_event_id)
+        data["event_time"] = datetime.utcnow()
+        user = self.config["user"]
+        pwd = self.config["passwd"]
+        host = self.config["host"]
+        db = self.config["database"]
+        with create_engine(f"mysql+pymysql://{user}:{pwd}@{host}/{db}").connect() as con:
+            data.to_sql(table_name, con=con, if_exists="append", index=False)
+
+
     def check_part_existence(self, id, allow_offline=False):
         if not self.check_online_status():
-            return allow_offline # allow offline editing
-
-        query = f"SQL asking for amount of entries for {id}"
-        entries = self.execute_query(query)
-        return len(entries) > 0
+            return allow_offline
+        data = self.get_table("components")
+        return id in data["id"].unique()
 
     def check_online_status(self):
         try:
@@ -62,29 +83,17 @@ class ConnectionManager:
                 continue
             else:
                 del jobs[i]
-        pickle_object(jobs, self.open_jobs)
+        pickle_object([encrypt_string(j) for j in jobs], self.open_jobs)
 
     def get_open_jobs(self):
         try:
-            return unpickle_object(self.open_jobs)
+            return [decrypt_string(j) for j in unpickle_object(self.open_jobs)]
         except FileNotFoundError:
             return []
 
     def execute_query(self, query):
-        db = pymysql.connect(**self.config)
-        cur = db.cursor()
-        cur.execute(query)
-        result = cur.fetchall()
-        db.close()
-        return result
-
-
-    def wait_for_changes(self):
-        query = "magic query to ask for last update" # TODO
-        db = pymysql.connect(**self.config)
-        cur = db.cursor()
-        while not sleep(5):
+        with pymysql.connect(**self.config) as con:
+            cur = con.cursor()
             cur.execute(query)
-            last_entry = cur.fetchall()
-            if last_entry == my_last_entry:
-                return
+            result = cur.fetchall()
+        return result

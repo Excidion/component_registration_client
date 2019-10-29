@@ -9,6 +9,7 @@ def main():
 
     cm_config = {
         "host": config.get("SQL", "host_address"),
+        "port": config.getint("SQL", "port"),
         "user": "",
         "passwd": "",
         "database": config.get("SQL", "database"),
