@@ -127,6 +127,7 @@ class UserInterface():
         self.display_new_state.grid(row=2, column=1, sticky="nesw")
         self.display_new_comment.grid(row=2, column=2, sticky="nesw")
 
+        self.reset_ui()
 
 
     def start(self):
@@ -144,7 +145,7 @@ class UserInterface():
 
     def update_online_status(self):
         if self.connection_manager.check_online_status():
-            text = f"Online as " + self.connection_manager.config["user"]
+            text = f"Online as\n" + self.connection_manager.config["user"]
         else:
             text = "Offline"
         self.online_status_indicator.config(text=text)
@@ -155,20 +156,22 @@ class UserInterface():
 
 
     def scan_part(self):
+        self.reset_ui()
         id = qr_cam()
         if self.connection_manager.check_part_existence(id, allow_offline=True):
             self.display_id.set(id)
-            self.display_qr.change_image(create_qr_code(self.display_id.get()))
             self.display_new_state.set("")
             self.display_new_comment.set("-")
             self.display_new_time.set(str(datetime.now()).split(".")[0])
-            self.display_assembly_group.freeze()
-            self.display_module.freeze()
+            slef.display_new_state.unfreeze()
         else:
             tm.showerror("Database Lookup", f"Part ({id}) could not be found.")
+            self.display_id.set("")
+        self.display_qr.change_image(create_qr_code(self.display_id.get()))
 
 
     def new_part(self):
+        self.reset_ui()
         id = generate_part_id()
         self.display_id.set(id)
         self.display_qr.change_image(create_qr_code(self.display_id.get()))
@@ -178,10 +181,20 @@ class UserInterface():
 
         self.display_new_time.set(str(datetime.now()).split(".")[0])
         self.display_new_state.set("manufactured")
+        self.display_new_state.freeze()
         self.display_new_comment.set("-")
         self.display_assembly_group.unfreeze()
         self.display_module.unfreeze()
 
+
+    def reset_ui(self):
+        for child in self.working_frame.winfo_children():
+            try:
+                child.freeze()
+            except: pass
+            try:
+                child.set("")
+            except: pass
 
 
 
@@ -251,7 +264,6 @@ class SelectionFrame(tk.LabelFrame):
                 command=self.add_option_dialogue,
             )
             self.button.grid(sticky="ew")
-            self.freeze()
 
 
     def freeze(self):
@@ -332,6 +344,7 @@ class ImageButton(tk.Button):
 class LoginWindow(tk.Toplevel):
     def __init__(self, connection_manager, update_ui):
         super().__init__()
+        self.title("Login")
         self.bind("<Escape>", lambda x: self.destroy())
         self.connection_manager = connection_manager
         self.update_ui = update_ui
