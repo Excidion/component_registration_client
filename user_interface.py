@@ -141,8 +141,11 @@ class UserInterface():
 
 
     def supervise_online_status(self):
-        while not sleep(5):
-            self.update_online_status()
+        try:
+            while not sleep(5):
+                self.update_online_status()
+        except RuntimeError: # when exiting the main process
+            pass
 
     def update_online_status(self):
         if self.connection_manager.check_online_status():
