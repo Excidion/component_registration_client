@@ -32,6 +32,15 @@ class ConnectionManager:
             self.storage,
             )
 
+    def get_unique(self, column):
+        data = self.get_table("components")
+        return list(data[column].unique())
+
+    def get_part_data(self, id):
+        data = self.get_table("components")
+        data = data[data["id"] == id]
+        data.sort_values("time", inplace=True, ascending=False)
+        return data.iloc[0].squeeze()
 
     def get_table(self, table_name):
         user = self.config["user"]
@@ -40,6 +49,10 @@ class ConnectionManager:
         db = self.config["database"]
         with create_engine(f"mysql+pymysql://{user}:{pwd}@{host}/{db}").connect() as con:
             return pd.read_sql(table_name, con=con)
+
+
+    def submit_part(self, data):
+        self.append_table("components", data)
 
     def append_table(self, table_name, data):
         data["user"] = self.config["user"]

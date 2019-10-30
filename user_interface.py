@@ -142,17 +142,23 @@ class UserInterface():
 
     def supervise_online_status(self):
         try:
-            while not sleep(5):
+            while True:
                 self.update_online_status()
+                sleep(5)
         except RuntimeError: # when exiting the main process
             pass
 
     def update_online_status(self):
-        if self.connection_manager.check_online_status():
-            text = f"Online as\n" + self.connection_manager.config["user"]
-        else:
-            text = "Offline"
-        self.online_status_indicator.config(text=text)
+        if not self.connection_manager.check_online_status():
+            self.online_status_indicator.config(text="Offline")
+            return
+
+        self.online_status_indicator.config(
+            text=f"Online as\n" + self.connection_manager.config["user"]
+        )
+        for widget in [self.display_assembly_group, self.display_module]:
+            x = widget.label.casefold().replace(" ", "_")
+            widget.update_options(self.connection_manager.get_unique(x))
 
 
     def enter_credentials(self):
@@ -162,13 +168,31 @@ class UserInterface():
     def scan_part(self):
         self.reset_ui()
         id = qr_cam()
-        if self.connection_manager.check_part_existence(id, allow_offline=True):
-            self.display_id.set(id)
-            self.display_new_time.set(datetime.now().strftime("%Y.%m.%d %H:%M"))
-            self.display_new_state.unfreeze()
+        if not self.connection_manager.check_part_existence(id, allow_offline=True):
+            tm.showerror("Database Lookup", f"Part {id} could not be found.")
         else:
-            tm.showerror("Database Lookup", f"Part ({id}) could not be found.")
+            self.display_id.set(id)
+            self.display_new_time.set(datetime.now().strftime("%Y-%m-%d %H:%M"))
+            self.display_new_state.unfreeze()
+
+            self.set_values(self.connection_manager.get_part_data(id))
+
+
         self.display_qr.change_image(create_qr_code(self.display_id.get()))
+
+    def set_values(self, data):
+        value_map = {
+            "id": self.display_id,
+            "time": self.display_state_time,
+            "state":  self.display_state,
+            "assembly_group": self.display_assembly_group,
+            "module": self.display_module,
+            "comment": self.display_state_comment,
+        }
+        for value in data.index:
+            try:
+                value_map[value].set(data[value])
+            except KeyError: pass
 
 
     def new_part(self):
@@ -180,7 +204,7 @@ class UserInterface():
         self.display_state.set("NA")
         self.display_state_comment.set("NA")
 
-        self.display_new_time.set(datetime.now().strftime("%Y.%m.%d %H:%M"))
+        self.display_new_time.set(datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.display_new_state.set("manufactured")
         self.display_new_state.freeze()
         self.display_assembly_group.unfreeze()
@@ -190,9 +214,9 @@ class UserInterface():
     def submit_work(self):
         time = self.display_new_time.get()
         try:
-            time = datetime.strptime(time, "%Y.%m.%d %H:%M")
+            time = datetime.strptime(time, "%Y-%m-%d %H:%M")
         except ValueError:
-            tm.showerror("Wrong date/time format", "Use format yyyy.mm.dd HH:MM")
+            tm.showerror("Wrong date/time format", "Use format yyyy-mm-dd HH:MM")
             return
 
         new_entries = {
@@ -213,9 +237,9 @@ class UserInterface():
                 new_entries,
                 ignore_index = True,
             )
-            self.connection_manager.append_table("components", data)
+            self.connection_manager.submit_part(data)
             tm.showinfo("Database Connection", "Data transfer successfull.")
-
+            self.reset_ui()
 
 
     def reset_ui(self):
@@ -308,6 +332,7 @@ class SelectionFrame(tk.LabelFrame):
             self.button.config(state="normal")
         except: pass
 
+
     def add_option_dialogue(self):
         add_and_exit = lambda x: [self.add_option(entry.get()), popup.destroy()]
         popup = tk.Toplevel()
@@ -320,17 +345,29 @@ class SelectionFrame(tk.LabelFrame):
         )
         cancel = tk.Button(popup, text="Cancel", command=popup.destroy)
         entry.grid()
+        entry.focus()
         add.grid(sticky="ew")
         cancel.grid(sticky="ew")
         popup.mainloop()
 
 
-    def add_option(self, option):
-        self.display['menu'].add_command(
-            label = option,
-            command = tk._setit(self.var, option),
-        )
-        self.set(option)
+    def update_options(self, options):
+        for option in options:
+            self.add_option(option, silent=True)
+
+    def add_option(self, option, silent=False):
+        if option in self.options:
+            if not silent:
+                tm.showerror(f"Error creating {self.label}", f"{option} already exists.")
+        else:
+            self.options.append(option)
+            self.display["menu"].add_command(
+                label = option,
+                command = tk._setit(self.var, option),
+            )
+        if not silent:
+            self.set(option)
+
 
     def set(self, val):
         self.var.set(val)
